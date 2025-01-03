@@ -245,7 +245,7 @@ class Program
         public WallFollowStrategy(string wallSide)
         {
             this.wallSide = wallSide;
-            currentDirection = (0, 1); // Defaultní směr: dolů
+            currentDirection = (0, 1); // Defaultní směr: dolůa
         }
 
         public Position Move(Position position, char[,] maze)
