@@ -76,15 +76,15 @@ class Program
         var dwarfsConfig = new[]
         {
         new { Name = "LeftTurnDwarf", Strategy = (IMovementStrategy)new WallFollowStrategy("left"), Symbol = 'L' },
-        //new { Name = "RightTurnDwarf", Strategy = (IMovementStrategy)new WallFollowStrategy("right"), Symbol = 'R' },
-        //new { Name = "RandomPortDwarf", Strategy = (IMovementStrategy)new RandomPortStrategy(maze), Symbol = 'T' }
+        new { Name = "RightTurnDwarf", Strategy = (IMovementStrategy)new WallFollowStrategy("right"), Symbol = 'R' },
+        new { Name = "RandomPortDwarf", Strategy = (IMovementStrategy)new RandomPortStrategy(maze), Symbol = 'T' }
     };
 
         var dwarfs = new List<(Dwarf Dwarf, string Name, char Symbol, Position PreviousPosition)>
     {
         (new Dwarf(maze, start, finish, dwarfsConfig[0].Strategy), dwarfsConfig[0].Name, dwarfsConfig[0].Symbol, start),
-        //(new Dwarf(maze, start, finish, dwarfsConfig[1].Strategy), dwarfsConfig[1].Name, dwarfsConfig[1].Symbol, start),
-        //(new Dwarf(maze, start, finish, dwarfsConfig[2].Strategy), dwarfsConfig[2].Name, dwarfsConfig[2].Symbol, start)
+        (new Dwarf(maze, start, finish, dwarfsConfig[1].Strategy), dwarfsConfig[1].Name, dwarfsConfig[1].Symbol, start),
+        (new Dwarf(maze, start, finish, dwarfsConfig[2].Strategy), dwarfsConfig[2].Name, dwarfsConfig[2].Symbol, start)
     };
 
         bool allFinished = false;
@@ -110,10 +110,6 @@ class Program
                     {
                         dwarf.Dwarf.UpdatePosition(newPosition);
                     }
-                    else
-                    {
-                        Console.WriteLine($"Chyba: Neplatná pozice ({newPosition.x}, {newPosition.y})!");
-                    }
 
                     // Aktualizace pozice
                     Console.SetCursorPosition(newPosition.x, newPosition.y);
@@ -124,16 +120,34 @@ class Program
                 }
             }
 
+            // Zobrazení aktuálních pozic pod bludištěm
+            DisplayDwarfPositions(dwarfs, maze.GetLength(0));
+
             // Kontrola, zda všichni došli do cíle
             allFinished = dwarfs.TrueForAll(dw => dw.Dwarf.IsAtFinish());
 
-            await Task.Delay(100);
+            await Task.Delay(10);
         }
 
-        Console.SetCursorPosition(0, maze.GetLength(0) + 2);
+        Console.SetCursorPosition(0, maze.GetLength(0) + dwarfs.Count + 2);
         Console.WriteLine("Všichni trpaslíci úspěšně došli do cíle!");
     }
-  
+
+    static void DisplayDwarfPositions(List<(Dwarf Dwarf, string Name, char Symbol, Position PreviousPosition)> dwarfs, int mazeHeight)
+    {
+        // Umístění kurzoru pod bludiště
+        Console.SetCursorPosition(0, mazeHeight + 1);
+
+        Console.WriteLine("Aktuální pozice trpaslíků:");
+        foreach (var dwarf in dwarfs)
+        {
+            var pos = dwarf.Dwarf.Position;
+            string status = dwarf.Dwarf.IsAtFinish() ? "Dorazil do cíle" : $"({pos.x}, {pos.y})";
+            Console.WriteLine($" - {dwarf.Name} ({dwarf.Symbol}): {status}");
+        }
+    }
+
+
     static void PrintInitialMaze(char[,] maze, List<(Dwarf Dwarf, string Name, char Symbol, Position PreviousPosition)> dwarfs)
     {
         int rows = maze.GetLength(0);
@@ -245,7 +259,7 @@ class Program
         public WallFollowStrategy(string wallSide)
         {
             this.wallSide = wallSide;
-            currentDirection = (0, 1); // Defaultní směr: dolůa
+            this.currentDirection = (0, 1); // Defaultní směr: dolů
         }
 
         public Position Move(Position position, char[,] maze)
@@ -256,18 +270,26 @@ class Program
 
             if (CanMove(wallDirection, position, maze))
             {
+                // Pokud je možné se pohnout ve směru zdi, změní směr na zeď
                 currentDirection = wallDirection;
             }
-            else if (!CanMove(currentDirection, position, maze))
+            else if (CanMove(currentDirection, position, maze))
             {
+                // Pokud není možné se pohnout směrem zdi, ale směr vpřed je volný, zůstane v aktuálním směru
+            }
+            else
+            {
+                // Pokud nelze jít ani na stranu ani vpřed, otočí se na opačnou stranu
                 currentDirection = wallSide == "left"
                     ? RotateRight(currentDirection)
                     : RotateLeft(currentDirection);
             }
 
+            // Vypočítá novou pozici
             int newX = position.x + currentDirection.dx;
             int newY = position.y + currentDirection.dy;
 
+            // Pokud je pohyb možný, vrátí novou pozici, jinak zůstává na místě
             if (CanMove(currentDirection, position, maze))
             {
                 return new Position(newX, newY);
@@ -281,7 +303,11 @@ class Program
             int newX = position.x + direction.dx;
             int newY = position.y + direction.dy;
 
-            return newX >= 0 && newY >= 0 && newX < maze.GetLength(1) && newY < maze.GetLength(0) && maze[newY, newX] != '#';
+            // Kontrola, zda je cílová pozice v rámci bludiště a není to zeď
+            return newX >= 0 && newY >= 0 &&
+                   newX < maze.GetLength(1) &&
+                   newY < maze.GetLength(0) &&
+                   maze[newY, newX] != '#';
         }
 
         private (int dx, int dy) RotateLeft((int dx, int dy) direction)
@@ -298,60 +324,61 @@ class Program
     // Třída pro strategii náhodné teleportace
     class RandomPortStrategy : IMovementStrategy
     {
-        private char[,] maze;
+        private List<Position> emptyPositions;
         private Position lastPosition;
 
         public RandomPortStrategy(char[,] maze)
         {
-            this.maze = maze; // Inicializace labyrintu
-            this.lastPosition = null;
+            // Najdeme všechna volná políčka včetně cíle F
+            emptyPositions = FindEmptyPositions(maze);
+            lastPosition = null;
         }
 
         public Position Move(Position position, char[,] maze)
         {
-            var emptyPositions = FindEmptyPositions(maze);
-
             if (emptyPositions.Count == 0)
             {
-                Console.WriteLine("Nebyla nalezena žádná volná pozice pro teleportaci.");
+                Console.WriteLine("Všechna volná políčka již byla navštívena.");
                 return position;
             }
 
             Position newPosition;
-            int tries = 0;
             Random rand = new Random();
 
             do
             {
                 int randomIndex = rand.Next(emptyPositions.Count);
                 newPosition = emptyPositions[randomIndex];
-                tries++;
             }
             while (lastPosition != null &&
                    newPosition.x == lastPosition.x &&
                    newPosition.y == lastPosition.y &&
-                   tries < emptyPositions.Count * 2);
+                   emptyPositions.Count > 1);
 
+            // Odstraníme navštívenou pozici ze seznamu
+            emptyPositions.Remove(newPosition);
             lastPosition = newPosition;
+
             return newPosition;
         }
 
         private List<Position> FindEmptyPositions(char[,] maze)
         {
-            var emptyPositions = new List<Position>();
+            var positions = new List<Position>();
             for (int y = 0; y < maze.GetLength(0); y++)
             {
                 for (int x = 0; x < maze.GetLength(1); x++)
                 {
                     if (maze[y, x] != '#')
                     {
-                        emptyPositions.Add(new Position(x, y));
+                        positions.Add(new Position(x, y));
                     }
                 }
             }
-            return emptyPositions;
+            return positions;
         }
     }
+
 
 
     // Třída pro trpaslíka
@@ -404,21 +431,17 @@ class Program
 
             Console.SetWindowSize(windowWidth, windowHeight);
 
-            Console.WriteLine($"Konzole nastavena: Šířka = {windowWidth}, Výška = {windowHeight}, Vyrovnávací paměť = ({bufferWidth}, {bufferHeight})");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Chyba při nastavování konzoly: {ex.Message}");
+            //Console.WriteLine($"Chyba při nastavování konzoly: {ex.Message}");
         }
     }
-
-
-
 
     // Potvrzení o ukončení programu
     static void WaitForExit()
     {
-        Console.WriteLine("\nStiskni libovolnou klávesu pro ukončení programu...");
+        Console.WriteLine("\nStiskni...");
         Console.ReadKey();
     }
 }
