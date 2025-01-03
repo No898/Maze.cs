@@ -1,1 +1,1 @@
-echo ".vs/" >> .gitignore
+.vs/

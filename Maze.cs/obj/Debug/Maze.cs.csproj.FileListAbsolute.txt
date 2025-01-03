@@ -1,0 +1,7 @@
+C:\Users\dinh\Desktop\github\Maze.cs\Maze.cs\obj\Debug\Maze.cs.csproj.AssemblyReference.cache
+C:\Users\dinh\Desktop\github\Maze.cs\Maze.cs\obj\Debug\Maze.cs.csproj.CoreCompileInputs.cache
+C:\Users\dinh\Desktop\github\Maze.cs\Maze.cs\bin\Debug\Maze.cs.exe.config
+C:\Users\dinh\Desktop\github\Maze.cs\Maze.cs\bin\Debug\Maze.cs.exe
+C:\Users\dinh\Desktop\github\Maze.cs\Maze.cs\bin\Debug\Maze.cs.pdb
+C:\Users\dinh\Desktop\github\Maze.cs\Maze.cs\obj\Debug\Maze.cs.exe
+C:\Users\dinh\Desktop\github\Maze.cs\Maze.cs\obj\Debug\Maze.cs.pdb
