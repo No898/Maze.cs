@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 class Program
-{
+{   // Main
     static async Task Main(string[] args)
     {
         string filePath = "maze.dat";
@@ -70,22 +70,26 @@ class Program
         WaitForExit();
     }
 
-    // Simulace
+    // Simulace trpaslíků
     static async Task SimulateDwarfs(char[,] maze, Position start, Position finish)
     {
         var dwarfsConfig = new[]
         {
         new { Name = "LeftTurnDwarf", Strategy = (IMovementStrategy)new WallFollowStrategy("left"), Symbol = 'L' },
         new { Name = "RightTurnDwarf", Strategy = (IMovementStrategy)new WallFollowStrategy("right"), Symbol = 'R' },
-        new { Name = "RandomPortDwarf", Strategy = (IMovementStrategy)new RandomPortStrategy(maze), Symbol = 'T' }
+        new { Name = "RandomPortDwarf", Strategy = (IMovementStrategy)new RandomPortStrategy(maze), Symbol = 'T' },
+        new { Name = "PathFollowingDwarf", Strategy = (IMovementStrategy)new PathFollowingStrategy(maze, start, finish), Symbol = 'P' }
+
     };
 
         var dwarfs = new List<(Dwarf Dwarf, string Name, char Symbol, Position PreviousPosition)>
     {
         (new Dwarf(maze, start, finish, dwarfsConfig[0].Strategy), dwarfsConfig[0].Name, dwarfsConfig[0].Symbol, start),
         (new Dwarf(maze, start, finish, dwarfsConfig[1].Strategy), dwarfsConfig[1].Name, dwarfsConfig[1].Symbol, start),
-        (new Dwarf(maze, start, finish, dwarfsConfig[2].Strategy), dwarfsConfig[2].Name, dwarfsConfig[2].Symbol, start)
+        (new Dwarf(maze, start, finish, dwarfsConfig[2].Strategy), dwarfsConfig[2].Name, dwarfsConfig[2].Symbol, start),
+        (new Dwarf(maze, start, finish, dwarfsConfig[3].Strategy), dwarfsConfig[3].Name, dwarfsConfig[3].Symbol, start)
     };
+
 
         bool allFinished = false;
 
@@ -100,8 +104,8 @@ class Program
 
                 if (!dwarf.Dwarf.IsAtFinish())
                 {
-                    // Smazání starého symbolu
-                    Console.SetCursorPosition(dwarf.PreviousPosition.x, dwarf.PreviousPosition.y);
+                    // Smazání starého symbolu (obnovení původního znaku bludiště)
+                    SafeSetCursorPosition(dwarf.PreviousPosition.x, dwarf.PreviousPosition.y);
                     Console.Write(maze[dwarf.PreviousPosition.y, dwarf.PreviousPosition.x]);
 
                     // Pohyb trpaslíka
@@ -111,8 +115,8 @@ class Program
                         dwarf.Dwarf.UpdatePosition(newPosition);
                     }
 
-                    // Aktualizace pozice
-                    Console.SetCursorPosition(newPosition.x, newPosition.y);
+                    // Aktualizace kurzoru a vykreslení nového symbolu
+                    SafeSetCursorPosition(newPosition.x, newPosition.y);
                     Console.Write(dwarf.Symbol);
 
                     // Uložení nové předchozí pozice
@@ -120,7 +124,7 @@ class Program
                 }
             }
 
-            // Zobrazení aktuálních pozic pod bludištěm
+            // Zobrazení pozic pod bludištěm
             DisplayDwarfPositions(dwarfs, maze.GetLength(0));
 
             // Kontrola, zda všichni došli do cíle
@@ -129,10 +133,13 @@ class Program
             await Task.Delay(10);
         }
 
+
+
         Console.SetCursorPosition(0, maze.GetLength(0) + dwarfs.Count + 2);
         Console.WriteLine("Všichni trpaslíci úspěšně došli do cíle!");
     }
 
+    // Zobrazení aktuální pozice trpaslíků
     static void DisplayDwarfPositions(List<(Dwarf Dwarf, string Name, char Symbol, Position PreviousPosition)> dwarfs, int mazeHeight)
     {
         // Umístění kurzoru pod bludiště
@@ -147,7 +154,7 @@ class Program
         }
     }
 
-
+    // Vykreslední bludiště a trpaslíků
     static void PrintInitialMaze(char[,] maze, List<(Dwarf Dwarf, string Name, char Symbol, Position PreviousPosition)> dwarfs)
     {
         int rows = maze.GetLength(0);
@@ -171,7 +178,8 @@ class Program
         }
     }
 
-    void SafeSetCursorPosition(int x, int y)
+    // Bezpečné nastavení pozice 
+    static void SafeSetCursorPosition(int x, int y)
     {
         // Zkontrolujte, zda je pozice v rozsahu
         if (x >= 0 && x < Console.BufferWidth && y >= 0 && y < Console.BufferHeight)
@@ -180,10 +188,9 @@ class Program
         }
         else
         {
-            Console.WriteLine($"Chyba: Nelze nastavit kurzor na ({x}, {y}) - Mimo rozsah konzoly.");
+            Console.WriteLine($"Neplatná pozice kurzoru: ({x}, {y}).");
         }
     }
-
 
     // Metoda pro nalezení startu a cíle
     public static (Position start, Position finish) FindStartAndFinish(char[,] maze)
@@ -223,6 +230,7 @@ class Program
         return (start, finish);
     }
 
+    // Metoda pro kontrolu platnosti pozice
     private static bool IsValidPosition(Position position, char[,] maze)
     {
         int rows = maze.GetLength(0);
@@ -232,6 +240,7 @@ class Program
                position.y >= 0 && position.y < rows;
     }
 
+    // Rozhraní pro strategii pohybu
     interface IMovementStrategy
     {
         Position Move(Position position, char[,] maze);
@@ -379,7 +388,78 @@ class Program
         }
     }
 
+    // Třída pro strategii následování cesty
+    class PathFollowingStrategy : IMovementStrategy
+    {
+        private List<Position> path;
+        private int currentStep;
 
+        public PathFollowingStrategy(char[,] maze, Position start, Position finish)
+        {
+            path = FindPath(maze, start, finish);
+            currentStep = 0;
+        }
+
+        private List<Position> FindPath(char[,] maze, Position start, Position finish)
+        {
+            var directions = new (int dx, int dy)[]
+            {
+        (0, -1),  // Nahoru
+        (-1, 0),  // Vlevo
+        (0, 1),   // Dolů
+        (1, 0)    // Vpravo
+            };
+
+            int rows = maze.GetLength(0);
+            int cols = maze.GetLength(1);
+
+            var visited = new bool[rows, cols];
+            var queue = new Queue<List<Position>>();
+
+            // Inicializace BFS
+            queue.Enqueue(new List<Position> { start });
+            visited[start.y, start.x] = true;
+
+            while (queue.Count > 0)
+            {
+                var path = queue.Dequeue();
+                var current = path[path.Count - 1];
+
+                // Pokud jsme dorazili na cíl, vracíme cestu
+                if (current.x == finish.x && current.y == finish.y)
+                {
+                    return path;
+                }
+
+                // Prozkoumání sousedních pozic
+                foreach (var (dx, dy) in directions)
+                {
+                    int newX = current.x + dx;
+                    int newY = current.y + dy;
+
+                    if (newX >= 0 && newY >= 0 && newX < cols && newY < rows &&
+                        maze[newY, newX] != '#' && !visited[newY, newX])
+                    {
+                        visited[newY, newX] = true;
+                        var newPath = new List<Position>(path) { new Position(newX, newY) };
+                        queue.Enqueue(newPath);
+                    }
+                }
+            }
+
+            throw new Exception("Cesta nenalezena.");
+        }
+
+
+        public Position Move(Position position, char[,] maze)
+        {
+            if (currentStep < path.Count)
+            {
+                return path[currentStep++];
+            }
+            return position; // Zůstane na místě, pokud dosáhl konce cesty
+        }
+    }
 
     // Třída pro trpaslíka
     class Dwarf
@@ -413,35 +493,31 @@ class Program
         }
     }
 
-
     // Nastavení velikosti konzole
     static void SetConsoleSize(int cols, int rows)
     {
         try
         {
-            // Nastavení vyrovnávací paměti na velikost větší nebo rovnou oknu
             int bufferWidth = Math.Max(cols + 2, Console.BufferWidth);
-            int bufferHeight = Math.Max(rows + 2, Console.BufferHeight);
+            int bufferHeight = Math.Max(rows + 10, Console.BufferHeight); // Rezerva pro pozice pod bludištěm
 
             Console.SetBufferSize(bufferWidth, bufferHeight);
 
-            // Nastavení velikosti okna na maximum dostupné velikosti konzoly
-            int windowWidth = Math.Min(cols + 2, Console.LargestWindowWidth);
-            int windowHeight = Math.Min(rows + 2, Console.LargestWindowHeight);
+            int windowWidth = Math.Min(bufferWidth, Console.LargestWindowWidth);
+            int windowHeight = Math.Min(bufferHeight, Console.LargestWindowHeight);
 
             Console.SetWindowSize(windowWidth, windowHeight);
-
         }
         catch (Exception ex)
         {
-            //Console.WriteLine($"Chyba při nastavování konzoly: {ex.Message}");
+            Console.WriteLine($"Chyba při nastavování velikosti konzole: {ex.Message}");
         }
     }
 
     // Potvrzení o ukončení programu
     static void WaitForExit()
     {
-        Console.WriteLine("\nStiskni...");
+        Console.WriteLine("\nStisknutím klávesy ukončíš Maze");
         Console.ReadKey();
     }
 }
