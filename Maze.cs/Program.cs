@@ -4,11 +4,13 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 class Program
-{   // Main
+{
+    // Odkaz souboru Maze
+    private static string filePath = "maze.dat";
+
+    // Main
     static async Task Main(string[] args)
     {
-        string filePath = "maze.dat";
-
         // Kontrola zda soubor existuje
         if (!File.Exists(filePath))
         {
@@ -56,7 +58,7 @@ class Program
             // Nastavení velikosti konzole
             SetConsoleSize(cols, rows);
 
-            // Najít start a cíl
+            // Nalezení startu a cíle
             var (start, finish) = FindStartAndFinish(maze);
 
             // Spuštění simulace
@@ -73,67 +75,77 @@ class Program
     // Simulace trpaslíků
     static async Task SimulateDwarfs(char[,] maze, Position start, Position finish)
     {
-        var dwarfsConfig = new[]
-        {
-        new { Name = "LeftTurnDwarf", Strategy = (IMovementStrategy)new WallFollowStrategy("left"), Symbol = 'L' },
-        new { Name = "RightTurnDwarf", Strategy = (IMovementStrategy)new WallFollowStrategy("right"), Symbol = 'R' },
-        new { Name = "RandomPortDwarf", Strategy = (IMovementStrategy)new RandomPortStrategy(maze), Symbol = 'T' },
-        new { Name = "PathFollowingDwarf", Strategy = (IMovementStrategy)new PathFollowingStrategy(maze, start, finish), Symbol = 'P' }
+        // Továrna na trpaslíky 
+        var dwarfFactory = new DwarfFactory(maze, start, finish);
 
+        // Nastavení trpaslíků
+        var dwarfConfigs = new[]
+        {
+        new { Name = "LeftTurnDwarf", Symbol = 'L' },
+        new { Name = "RightTurnDwarf", Symbol = 'R' },
+        new { Name = "RandomPortDwarf", Symbol = 'T' },
+        new { Name = "PathFollowingDwarf", Symbol = 'P' }
     };
 
+        // Začátek prvního trpaslíka
         var dwarfs = new List<(Dwarf Dwarf, string Name, char Symbol, Position PreviousPosition)>
     {
-        (new Dwarf(maze, start, finish, dwarfsConfig[0].Strategy), dwarfsConfig[0].Name, dwarfsConfig[0].Symbol, start),
-        (new Dwarf(maze, start, finish, dwarfsConfig[1].Strategy), dwarfsConfig[1].Name, dwarfsConfig[1].Symbol, start),
-        (new Dwarf(maze, start, finish, dwarfsConfig[2].Strategy), dwarfsConfig[2].Name, dwarfsConfig[2].Symbol, start),
-        (new Dwarf(maze, start, finish, dwarfsConfig[3].Strategy), dwarfsConfig[3].Name, dwarfsConfig[3].Symbol, start)
+        (dwarfFactory.CreateDwarf(dwarfConfigs[0].Name), dwarfConfigs[0].Name, dwarfConfigs[0].Symbol, start)
     };
 
+        // Vykreslení bludiště s trpaslíkem
+        PrintInitialMaze(maze, dwarfs);
 
         bool allFinished = false;
-
-        // Počáteční vykreslení mapy
-        PrintInitialMaze(maze, dwarfs);
+        int currentDwarfIndex = 1;
+        var dwarfAddTimers = new List<int> { 0, 5000, 10000, 15000 }; // po 5s 
+        var startTime = DateTime.Now;
 
         while (!allFinished)
         {
+            // Výpočet času od začátku simulace
+            var elapsedTime = (DateTime.Now - startTime).TotalMilliseconds;
+
+            // Přidání trpaslíka dle času v dwarfAddTimers
+            if (currentDwarfIndex < dwarfConfigs.Length && elapsedTime >= dwarfAddTimers[currentDwarfIndex])
+            {
+                var newDwarf = dwarfFactory.CreateDwarf(dwarfConfigs[currentDwarfIndex].Name);
+                dwarfs.Add((newDwarf, dwarfConfigs[currentDwarfIndex].Name, dwarfConfigs[currentDwarfIndex].Symbol, start));
+
+                SafeSetCursorPosition(start.x, start.y);
+                Console.Write(dwarfConfigs[currentDwarfIndex].Symbol);
+
+                currentDwarfIndex++;
+            }
+
             for (int i = 0; i < dwarfs.Count; i++)
             {
                 var dwarf = dwarfs[i];
 
                 if (!dwarf.Dwarf.IsAtFinish())
                 {
-                    // Smazání starého symbolu (obnovení původního znaku bludiště)
                     SafeSetCursorPosition(dwarf.PreviousPosition.x, dwarf.PreviousPosition.y);
                     Console.Write(maze[dwarf.PreviousPosition.y, dwarf.PreviousPosition.x]);
 
-                    // Pohyb trpaslíka
                     var newPosition = dwarf.Dwarf.Strategy.Move(dwarf.Dwarf.Position, maze);
                     if (IsValidPosition(newPosition, maze))
                     {
                         dwarf.Dwarf.UpdatePosition(newPosition);
                     }
 
-                    // Aktualizace kurzoru a vykreslení nového symbolu
                     SafeSetCursorPosition(newPosition.x, newPosition.y);
                     Console.Write(dwarf.Symbol);
 
-                    // Uložení nové předchozí pozice
                     dwarfs[i] = (dwarf.Dwarf, dwarf.Name, dwarf.Symbol, newPosition);
                 }
             }
 
-            // Zobrazení pozic pod bludištěm
             DisplayDwarfPositions(dwarfs, maze.GetLength(0));
-
-            // Kontrola, zda všichni došli do cíle
             allFinished = dwarfs.TrueForAll(dw => dw.Dwarf.IsAtFinish());
 
-            await Task.Delay(10);
+            // Rychlost pohybu trpaslíka
+            await Task.Delay(100);
         }
-
-
 
         Console.SetCursorPosition(0, maze.GetLength(0) + dwarfs.Count + 2);
         Console.WriteLine("Všichni trpaslíci úspěšně došli do cíle!");
@@ -142,9 +154,10 @@ class Program
     // Zobrazení aktuální pozice trpaslíků
     static void DisplayDwarfPositions(List<(Dwarf Dwarf, string Name, char Symbol, Position PreviousPosition)> dwarfs, int mazeHeight)
     {
-        // Umístění kurzoru pod bludiště
+        // Umístění zobrazení pod bludiště
         Console.SetCursorPosition(0, mazeHeight + 1);
 
+        // Nadpis a výpis každého trpaslíka
         Console.WriteLine("Aktuální pozice trpaslíků:");
         foreach (var dwarf in dwarfs)
         {
@@ -246,19 +259,6 @@ class Program
         Position Move(Position position, char[,] maze);
     }
 
-    // Třída pro uchování pozice
-    public class Position
-    {
-        public int x { get; }
-        public int y { get; }
-
-        public Position(int x, int y)
-        {
-            this.x = x;
-            this.y = y;
-        }
-    }
-
     // Třída pro strategii WallFollow
     class WallFollowStrategy : IMovementStrategy
     {
@@ -321,12 +321,12 @@ class Program
 
         private (int dx, int dy) RotateLeft((int dx, int dy) direction)
         {
-            return (-direction.dy, direction.dx);
+            return (direction.dy, -direction.dx);
         }
 
         private (int dx, int dy) RotateRight((int dx, int dy) direction)
         {
-            return (direction.dy, -direction.dx);
+            return (-direction.dy, direction.dx);
         }
     }
 
@@ -490,6 +490,55 @@ class Program
         public bool IsAtFinish()
         {
             return Position.x == Finish.x && Position.y == Finish.y;
+        }
+    }
+
+    // Třída pro vytváření trpaslíků pomocí Factory Pattern
+    class DwarfFactory
+    {
+        private char[,] _maze;
+        private Position _start;
+        private Position _finish;
+
+        public DwarfFactory(char[,] maze, Position start, Position finish)
+        {
+            _maze = maze;
+            _start = start;
+            _finish = finish;
+        }
+
+        public Dwarf CreateDwarf(string name)
+        {
+            switch (name)
+            {
+                case "LeftTurnDwarf":
+                    return new Dwarf(_maze, _start, _finish, new WallFollowStrategy("left"));
+
+                case "RightTurnDwarf":
+                    return new Dwarf(_maze, _start, _finish, new WallFollowStrategy("right"));
+
+                case "RandomPortDwarf":
+                    return new Dwarf(_maze, _start, _finish, new RandomPortStrategy(_maze));
+
+                case "PathFollowingDwarf":
+                    return new Dwarf(_maze, _start, _finish, new PathFollowingStrategy(_maze, _start, _finish));
+
+                default:
+                    throw new ArgumentException($"Unknown dwarf type: {name}");
+            }
+        }
+    }
+
+    // Třída pro uchování pozice
+    public class Position
+    {
+        public int x { get; }
+        public int y { get; }
+
+        public Position(int x, int y)
+        {
+            this.x = x;
+            this.y = y;
         }
     }
 
