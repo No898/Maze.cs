@@ -547,21 +547,32 @@ class Program
     {
         try
         {
-            int bufferWidth = Math.Max(cols + 2, Console.BufferWidth);
-            int bufferHeight = Math.Max(rows + 10, Console.BufferHeight); // Rezerva pro pozice pod bludištěm
+            // Minimální rozměry bufferu (pro bludiště + statistiky)
+            int requiredWidth = cols + 2;  // Bludiště a rezerva
+            int requiredHeight = rows + 5; // Bludiště + prostor pro informace
 
-            Console.SetBufferSize(bufferWidth, bufferHeight);
+            // Nastavíme velikost bufferu
+            Console.SetBufferSize(
+                Math.Max(requiredWidth, Console.BufferWidth),
+                Math.Max(requiredHeight, Console.BufferHeight)
+            );
 
-            int windowWidth = Math.Min(bufferWidth, Console.LargestWindowWidth);
-            int windowHeight = Math.Min(bufferHeight, Console.LargestWindowHeight);
+            // Maximální povolené rozměry okna
+            int windowWidth = Math.Min(requiredWidth, Console.LargestWindowWidth);
+            int windowHeight = Math.Min(requiredHeight, Console.LargestWindowHeight);
 
+            // Nastavíme velikost okna
             Console.SetWindowSize(windowWidth, windowHeight);
+
+            // Zarovnání kurzoru na začátek (pro případ, že buffer byl menší)
+            Console.SetCursorPosition(0, 0);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Chyba při nastavování velikosti konzole: {ex.Message}");
         }
     }
+
 
     // Potvrzení o ukončení programu
     static void WaitForExit()
