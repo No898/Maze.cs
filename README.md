@@ -86,25 +86,22 @@ Vytvořte konzolovou aplikaci, která:
      dotnet run
      ```
 
-### Upozornění pro uživatele Windows 11
+### Důležité upozornění
+
+Aplikaci je třeba spouštět **pouze** v příkazové řádce (CMD) nebo PowerShellu v režimu **Windows Console Host**. 
+Moderní terminály, jako je **Windows Terminal** nebo integrované terminály v IDE (např. Visual Studio Code), nepodporují změnu velikosti konzole prostřednictvím kódu, což může způsobit problémy s vykreslováním bludiště.
+
+#### Jak spustit aplikaci:
+1. Otevřete **CMD** nebo **PowerShell**:
+   - Stiskněte **Win + R**, napište `cmd` nebo `powershell` a potvrďte klávesou Enter.
+2. Spusťte aplikaci příkazem:
+   ```bash
+   Maze.exe
+
+
+### Tip pro uživatele Windows 11
 
 Aplikace vyžaduje správné nastavení konzole ve Windows 11. Ujistěte se, že máte změněno nastavení konzole:
 1. Otevřete **Nastavení > Ochrana osobních údajů a zabezpečení > Pro vývojáře > Terminál**.
 2. Změňte volbu **Hostitelská konzole** na **Konzole Windows** místo možnosti **Nechat rozhodnout Windows**.
 
-## Typické problémy a jejich řešení
-
-1. **Soubor `maze.dat` nebyl nalezen**:
-   - Zkontrolujte, zda je soubor umístěn ve stejné složce jako aplikace.
-   - Soubor musí mít správný formát (obdélníkový tvar, obsahuje `S` a `F`).
-
-2. **Velikost konzole je příliš malá**:
-   - Aplikace vás vyzve ke zvětšení okna. Pokud problém přetrvává, upravte nastavení terminálu podle pokynů výše.
-
-3. **Chyba při spuštění `dotnet run`**:
-   - Zkontrolujte, zda je správně nainstalováno .NET SDK, příkazem:
-     ```cmd
-     dotnet --version
-     ```
-
----
