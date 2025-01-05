@@ -70,7 +70,6 @@ Vytvořte konzolovou aplikaci, která:
 1. **Platforma**: Windows 10 nebo novější.
 2. **.NET SDK**: Verze 6.0 nebo novější. Stáhněte si ji z [oficiálního webu .NET](https://dotnet.microsoft.com/).
 
----
 ### Kroky ke spuštění
 
 1. **Stažení projektu**:
@@ -86,15 +85,12 @@ Vytvořte konzolovou aplikaci, která:
      ```cmd
      dotnet run
      ```
----
 
 ### Upozornění pro uživatele Windows 11
 
 Aplikace vyžaduje správné nastavení konzole ve Windows 11. Ujistěte se, že máte změněno nastavení konzole:
 1. Otevřete **Nastavení > Ochrana osobních údajů a zabezpečení > Pro vývojáře > Terminál**.
 2. Změňte volbu **Hostitelská konzole** na **Konzole Windows** místo možnosti **Nechat rozhodnout Windows**.
-
----
 
 ## Typické problémy a jejich řešení
 
