@@ -94,9 +94,19 @@ Moderní terminály, jako je **Windows Terminal** nebo integrované terminály v
 #### Jak spustit aplikaci:
 1. Otevřete **CMD** nebo **PowerShell**:
    - Stiskněte **Win + R**, napište `cmd` nebo `powershell` a potvrďte klávesou Enter.
-2. Spusťte aplikaci příkazem:
+2. Přejděte do složky, kde je aplikace umístěna:
+   - Použijte příkaz:
+     ```bash
+     cd cesta\k\složce\s\aplikací
+     ```
+     Například:
+     ```bash
+     cd C:\Users\Uživatel\Documents\MazeProject
+     ```
+3. Spusťte aplikaci příkazem:
    ```bash
-   Maze.exe
+   Maze.cs.exe
+
 
 
 ### Tip pro uživatele Windows 11
