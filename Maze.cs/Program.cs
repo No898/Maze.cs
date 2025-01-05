@@ -30,19 +30,10 @@ class Program
                 lines[i] = lines[i].TrimEnd();
             }
 
-            // Validace: počet char v řádku pro kontrolu 2D
-            int expectedLength = lines[0].Length;
-            for (int i = 0; i < lines.Length; i++)
-            {
-                if (lines[i].Length != expectedLength)
-                {
-                    Console.WriteLine($"Chyba na řádku {i + 1}: délka {lines[i].Length}, očekává se {expectedLength}.");
-                    WaitForExit();
-                    return;
-                }
-            }
+            // Kontrola formátu bludiště
+            ValidateMazeFormat(lines);
 
-            // Vytvoření pole 
+            // Vytvoření pole
             int rows = lines.Length;
             int cols = lines[0].Length;
             char[,] maze = new char[rows, cols];
@@ -63,13 +54,50 @@ class Program
 
             // Spuštění simulace
             await SimulateDwarfs(maze, start, finish);
-
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Došlo k chybě: {ex.Message}");
         }
         WaitForExit();
+    }
+
+    // Check bludiště
+    static void ValidateMazeFormat(string[] lines)
+    {
+        if (lines.Length == 0)
+        {
+            throw new Exception("Bludiště je prázdné.");
+        }
+
+        int expectedLength = lines[0].Length;
+        int startCount = 0;
+        int finishCount = 0;
+
+        for (int i = 0; i < lines.Length; i++)
+        {   // Check každého řádku
+            if (lines[i].Length != expectedLength)
+            {
+                throw new Exception($"Chyba na řádku {i + 1}: délka {lines[i].Length}, očekává se {expectedLength}.");
+            }
+
+            // Check startu, cíle a zdi
+            foreach (char c in lines[i])
+            {
+                if (c != 'S' && c != 'F' && c != '#' && c != ' ')
+                {
+                    throw new Exception($"Neplatný znak '{c}' v bludišti na řádku {i + 1}.");
+                }
+
+                if (c == 'S') startCount++;
+                if (c == 'F') finishCount++;
+            }
+        }
+
+        if (startCount != 1 || finishCount != 1)
+        {
+            throw new Exception("Bludiště musí obsahovat právě jedno 'S' (start) a jedno 'F' (cíl).");
+        }
     }
 
     // Simulace trpaslíků
@@ -154,16 +182,25 @@ class Program
     // Zobrazení aktuální pozice trpaslíků
     static void DisplayDwarfPositions(List<(Dwarf Dwarf, string Name, char Symbol, Position PreviousPosition)> dwarfs, int mazeHeight)
     {
-        // Umístění zobrazení pod bludiště
-        Console.SetCursorPosition(0, mazeHeight + 1);
+        // Vymažeme všechny řádky, kde se zobrazují pozice trpaslíků
+        int linesToClear = dwarfs.Count + 2; // +2 pro nadpis a prázdný řádek
+        for (int i = 0; i < linesToClear; i++)
+        {
+            Console.SetCursorPosition(0, mazeHeight + i);
+            Console.Write(new string(' ', Console.WindowWidth)); // Vymaže celý řádek
+        }
 
-        // Nadpis a výpis každého trpaslíka
+        // Kurzor na začátek oblasti pro zobrazení
+        Console.SetCursorPosition(0, mazeHeight);
+
         Console.WriteLine("Aktuální pozice trpaslíků:");
+
+        // Výpis pozic 
         foreach (var dwarf in dwarfs)
         {
             var pos = dwarf.Dwarf.Position;
             string status = dwarf.Dwarf.IsAtFinish() ? "Dorazil do cíle" : $"({pos.x}, {pos.y})";
-            Console.WriteLine($" - {dwarf.Name} ({dwarf.Symbol}): {status}");
+            Console.WriteLine($" - {dwarf.Name}: {status}");
         }
     }
 
@@ -214,6 +251,7 @@ class Program
         int rows = maze.GetLength(0);
         int cols = maze.GetLength(1);
 
+        // Hledáme x a y pozici startu a cíle
         for (int y = 0; y < rows; y++)
         {
             for (int x = 0; x < cols; x++)
@@ -227,7 +265,7 @@ class Program
                     finish = new Position(x, y);
                 }
 
-                // Pokud jsme našli oba body, ukončíme hledání
+                // Pokud jsme start a cíl, ukončíme hledání
                 if (start != null && finish != null)
                 {
                     return (start, finish);
@@ -284,7 +322,7 @@ class Program
             }
             else if (CanMove(currentDirection, position, maze))
             {
-                // Pokud není možné se pohnout směrem zdi, ale směr vpřed je volný, zůstane v aktuálním směru
+                // Pokud není možné se pohnout směrem zdi, zůstane v aktuálním směru
             }
             else
             {
@@ -347,7 +385,7 @@ class Program
         {
             if (emptyPositions.Count == 0)
             {
-                Console.WriteLine("Všechna volná políčka již byla navštívena.");
+                Console.WriteLine("Všechna volná pole byla navštívena.");
                 return position;
             }
 
@@ -371,6 +409,7 @@ class Program
             return newPosition;
         }
 
+        // Procházíme každé pole a pokud to není "#" tak to uložíme do listu
         private List<Position> FindEmptyPositions(char[,] maze)
         {
             var positions = new List<Position>();
@@ -569,10 +608,12 @@ class Program
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Chyba při nastavování velikosti konzole: {ex.Message}");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Došlo k chybě: {ex.Message}");
+            Console.ResetColor();
+            WaitForExit();
         }
     }
-
 
     // Potvrzení o ukončení programu
     static void WaitForExit()
