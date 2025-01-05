@@ -103,5 +103,5 @@ Moderní terminály, jako je **Windows Terminal** nebo integrované terminály v
 
 Aplikace vyžaduje správné nastavení konzole ve Windows 11. Ujistěte se, že máte změněno nastavení konzole:
 1. Otevřete **Nastavení > Ochrana osobních údajů a zabezpečení > Pro vývojáře > Terminál**.
-2. Změňte volbu **Hostitelská konzole** na **Konzole Windows** místo možnosti **Nechat rozhodnout Windows**.
+2. Změňte volbu **Nechat rozhodnout Windows** na **Hostitel konzole windows** .
 
