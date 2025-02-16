@@ -33,17 +33,41 @@ class Program
             // Kontrola formátu bludiště
             ValidateMazeFormat(lines);
 
-            // Vytvoření pole
-            int rows = lines.Length;
-            int cols = lines[0].Length;
+            // První průchod: zjištění počtu řádků a délky prvního řádku + kontrola konzistence délky řádků
+            int rows = 0;
+            int cols = 0;
+            foreach (var line in File.ReadLines(filePath))
+            {
+                string trimmedLine = line.TrimEnd();
+                if (rows == 0)
+                {
+                    cols = trimmedLine.Length;
+                }
+                else if (trimmedLine.Length != cols)
+                {
+                    throw new Exception($"Chyba na řádku {rows + 1}: délka {trimmedLine.Length}, očekává se {cols}.");
+                }
+                rows++;
+            }
+
+            if (rows == 0)
+            {
+                throw new Exception("Bludiště je prázdné.");
+            }
+
+            // Alokace pole pro bludiště
             char[,] maze = new char[rows, cols];
 
-            for (int i = 0; i < rows; i++)
+            // Druhý průchod: načtení souboru a přímé naplnění pole
+            int y = 0;
+            foreach (var line in File.ReadLines(filePath))
             {
-                for (int j = 0; j < cols; j++)
+                string trimmedLine = line.TrimEnd();
+                for (int x = 0; x < cols; x++)
                 {
-                    maze[i, j] = lines[i][j];
+                    maze[y, x] = trimmedLine[x];
                 }
+                y++;
             }
 
             // Nastavení velikosti konzole
